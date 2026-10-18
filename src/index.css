@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+:root {
+  --theme-primary: #00f0ff;
+  --theme-secondary: #ff0055;
+  --theme-bg: #07090e;
+  --theme-accent: #ffe600;
+  --theme-border: rgba(0, 240, 255, 0.4);
+  --theme-glow: rgba(0, 240, 255, 0.45);
+  --theme-title-color: #00f0ff;
+  --theme-bar-bg: rgba(6, 8, 14, 0.95);
+  --theme-header-bg: linear-gradient(to right, #0f172a, #1e293b, #0f172a);
+}
+
+[data-theme="cyberpunk"] {
+  --theme-primary: #00f0ff;
+  --theme-secondary: #ff0055;
+  --theme-bg: #07090e;
+  --theme-accent: #ffe600;
+  --theme-border: rgba(0, 240, 255, 0.4);
+  --theme-glow: rgba(0, 240, 255, 0.45);
+  --theme-title-color: #00f0ff;
+  --theme-bar-bg: rgba(6, 8, 14, 0.95);
+  --theme-header-bg: linear-gradient(to right, #0f172a, #1e293b, #0f172a);
+}
+
+[data-theme="matrix"] {
+  --theme-primary: #00ff66;
+  --theme-secondary: #10b981;
+  --theme-bg: #021208;
+  --theme-accent: #86efac;
+  --theme-border: rgba(0, 255, 102, 0.45);
+  --theme-glow: rgba(0, 255, 102, 0.45);
+  --theme-title-color: #00ff66;
+  --theme-bar-bg: rgba(2, 18, 8, 0.95);
+  --theme-header-bg: linear-gradient(to right, #02200f, #06381a, #02200f);
+}
+
+[data-theme="synthwave"] {
+  --theme-primary: #ff007f;
+  --theme-secondary: #a855f7;
+  --theme-bg: #11051f;
+  --theme-accent: #f472b6;
+  --theme-border: rgba(255, 0, 127, 0.45);
+  --theme-glow: rgba(255, 0, 127, 0.45);
+  --theme-title-color: #ff007f;
+  --theme-bar-bg: rgba(17, 5, 31, 0.95);
+  --theme-header-bg: linear-gradient(to right, #1f0738, #3b0764, #1f0738);
+}
+
+[data-theme="gold"] {
+  --theme-primary: #ffd700;
+  --theme-secondary: #f59e0b;
+  --theme-bg: #150f03;
+  --theme-accent: #fde047;
+  --theme-border: rgba(255, 215, 0, 0.45);
+  --theme-glow: rgba(255, 215, 0, 0.45);
+  --theme-title-color: #ffd700;
+  --theme-bar-bg: rgba(21, 15, 3, 0.95);
+  --theme-header-bg: linear-gradient(to right, #2c1a04, #451a03, #2c1a04);
+}
+
+html {
+  font-size: 17px;
+}
+
+body {
+  background-color: var(--theme-bg);
+  color: #f1f5f9;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 14px;
+  user-select: none;
+  -webkit-user-select: none;
+  overflow: hidden;
+  transition: background-color 0.3s ease;
+}
+
+/* 全局整体字体放大 1px (Typography +1px Boost) */
+.text-xs { font-size: 13px !important; line-height: 1.2rem !important; }
+.text-sm { font-size: 15px !important; line-height: 1.35rem !important; }
+.text-base { font-size: 17px !important; line-height: 1.5rem !important; }
+.text-lg { font-size: 19px !important; line-height: 1.75rem !important; }
+.text-xl { font-size: 21px !important; line-height: 1.75rem !important; }
+.text-2xl { font-size: 25px !important; line-height: 2rem !important; }
+.text-3xl { font-size: 31px !important; line-height: 2.25rem !important; }
+
+.text-\[8px\] { font-size: 9px !important; }
+.text-\[9px\] { font-size: 10px !important; }
+.text-\[10px\] { font-size: 11px !important; }
+.text-\[11px\] { font-size: 12px !important; }
+.text-\[12px\] { font-size: 13px !important; }
+.text-\[13px\] { font-size: 14px !important; }
+.text-\[14px\] { font-size: 15px !important; }
+.text-\[15px\] { font-size: 16px !important; }
+
+/* Authentic Vintage Retro CRT Scanlines Overlay */
+.crt-overlay {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: 
+    linear-gradient(
+      rgba(18, 16, 16, 0) 50%, 
+      rgba(0, 0, 0, 0.48) 50%
+    ),
+    radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 0, 0, 0) 65%,
+      rgba(0, 0, 0, 0.6) 100%
+    );
+  background-size: 100% 3px, 100% 100%;
+  z-index: 99999;
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.85);
+  animation: crtScanlineFlicker 0.2s infinite;
+}
+
+@keyframes crtScanlineFlicker {
+  0% { opacity: 0.92; }
+  50% { opacity: 0.98; }
+  100% { opacity: 0.94; }
+}
+
+/* Custom Cyber Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 15, 25, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--theme-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--theme-primary);
+}
+
+.text-glow-theme {
+  text-shadow: 0 0 8px var(--theme-primary), 0 0 16px var(--theme-glow);
+}
+
+.shadow-neon-theme {
+  box-shadow: 0 0 12px var(--theme-glow), 0 0 24px var(--theme-glow);
+}
+
+.border-theme {
+  border-color: var(--theme-border);
+}
+
+.text-glow-cyan {
+  text-shadow: 0 0 8px rgba(0, 240, 255, 0.7), 0 0 16px rgba(0, 240, 255, 0.4);
+}
+
+.text-glow-pink {
+  text-shadow: 0 0 8px rgba(255, 0, 85, 0.7), 0 0 16px rgba(255, 0, 85, 0.4);
+}
+
+.text-glow-gold {
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.7), 0 0 16px rgba(255, 215, 0, 0.4);
+}
+
+.text-glow-green {
+  text-shadow: 0 0 8px rgba(0, 255, 102, 0.7), 0 0 16px rgba(0, 255, 102, 0.4);
+}
+
+.text-glow-purple {
+  text-shadow: 0 0 8px rgba(176, 0, 255, 0.7), 0 0 16px rgba(176, 0, 255, 0.4);
+}
+
+.shadow-neon-cyan {
+  box-shadow: 0 0 10px rgba(0, 240, 255, 0.4), 0 0 20px rgba(0, 240, 255, 0.15);
+}
+
+.shadow-neon-pink {
+  box-shadow: 0 0 10px rgba(255, 0, 85, 0.4), 0 0 20px rgba(255, 0, 85, 0.15);
+}
+
+.shadow-neon-green {
+  box-shadow: 0 0 10px rgba(0, 255, 102, 0.4), 0 0 20px rgba(0, 255, 102, 0.15);
+}
+
+.shadow-neon-gold {
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.4), 0 0 20px rgba(255, 215, 0, 0.15);
+}
+
+.shadow-neon-purple {
+  box-shadow: 0 0 10px rgba(176, 0, 255, 0.4), 0 0 20px rgba(176, 0, 255, 0.15);
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+.grid-cols-16 {
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+}
+
+/* Custom utility: no-scrollbar */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom animation: pulse-fast */
+@keyframes pulse-fast {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+.animate-pulse-fast {
+  animation: pulse-fast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+
+/* ---------------------------------------------------------------
+   Entrance / exit animations. The markup uses the tailwindcss-animate
+   vocabulary (animate-in fade-in zoom-in-95 …) but that plugin is not
+   part of Tailwind v4, so none of those classes generated any CSS and
+   every dialog, toast and window popped in with no motion at all.
+   --------------------------------------------------------------- */
+@keyframes cyberEnter {
+  from {
+    opacity: var(--tw-enter-opacity, 1);
+    transform: translate(var(--tw-enter-translate-x, 0), var(--tw-enter-translate-y, 0))
+      scale(var(--tw-enter-scale, 1));
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes cyberExit {
+  from {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    opacity: var(--tw-exit-opacity, 1);
+    transform: translate(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0))
+      scale(var(--tw-exit-scale, 1));
+  }
+}
+
+.animate-in {
+  animation: cyberEnter 180ms ease-out both;
+}
+
+.animate-out {
+  animation: cyberExit 600ms ease-in both;
+}
+
+.fade-in { --tw-enter-opacity: 0; }
+.fade-out { --tw-exit-opacity: 0; }
+.zoom-in { --tw-enter-scale: 0.9; }
+.zoom-in-50 { --tw-enter-scale: 0.5; }
+.zoom-in-75 { --tw-enter-scale: 0.75; }
+.zoom-in-95 { --tw-enter-scale: 0.95; }
+.slide-in-from-right-4 { --tw-enter-translate-x: 1rem; }
+.slide-in-from-bottom-3 { --tw-enter-translate-y: 0.75rem; }
+.slide-out-to-top-8 { --tw-exit-translate-y: -2rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out {
+    animation-duration: 1ms;
+  }
+}
