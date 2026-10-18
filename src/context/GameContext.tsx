@@ -271,12 +271,12 @@ const INITIAL_WINDOWS: WindowState[] = [
     isMinimized: false,
     isMaximized: false,
     zIndex: 18,
-    x: 200,
-    y: 80,
-    width: 520,
-    height: 560,
-    minWidth: 400,
-    minHeight: 460,
+    x: 180,
+    y: 60,
+    width: 650,
+    height: 680,
+    minWidth: 540,
+    minHeight: 560,
   },
   {
     id: 'forge',
@@ -462,7 +462,22 @@ function loadWindowLayout(): WindowState[] {
     const raw = localStorage.getItem(WINDOW_LAYOUT_KEY);
     if (!raw) return INITIAL_WINDOWS;
     const saved = JSON.parse(raw) as Record<string, Partial<WindowState>>;
-    return INITIAL_WINDOWS.map((w) => (saved[w.id] ? { ...w, ...saved[w.id] } : w));
+    return INITIAL_WINDOWS.map((w) => {
+      const s = saved[w.id];
+      if (!s) return w;
+      let width = Math.max(w.minWidth || 360, s.width ?? w.width);
+      let height = Math.max(w.minHeight || 300, s.height ?? w.height);
+      if (w.id === 'minesweeper' && (width < 650 || height < 680)) {
+        width = 650;
+        height = 680;
+      }
+      return {
+        ...w,
+        ...s,
+        width,
+        height,
+      };
+    });
   } catch {
     return INITIAL_WINDOWS;
   }

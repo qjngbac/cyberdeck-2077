@@ -52,6 +52,20 @@ const revealEmptyNeighbors = (board: Cell[][], r: number, c: number, rows: numbe
 /** 通关掉落传说法宝的真实概率——每个难度各自独立掷骰，不再被 hard 短路成必掉。 */
 const LEGENDARY_DROP_CHANCE: Record<Difficulty, number> = { easy: 0.2, medium: 0.45, hard: 0.6 };
 
+/** 难度自适应窗口尺寸 (宽度与高度自动匹配对应难度矩阵，杜绝挤压与重叠) */
+const DIFFICULTY_WINDOW_SIZES: Record<Difficulty, { width: number; height: number }> = {
+  easy: { width: 560, height: 580 },
+  medium: { width: 650, height: 680 },
+  hard: { width: 730, height: 750 },
+};
+
+/** 难度自适应格子尺寸 */
+const CELL_SIZES: Record<Difficulty, string> = {
+  easy: 'w-9 h-9 sm:w-10 sm:h-10 text-sm',
+  medium: 'w-7 h-7 sm:w-8 sm:h-8 text-xs',
+  hard: 'w-6 h-6 sm:w-7 sm:h-7 text-[11px]',
+};
+
 const cloneGrid = (board: Cell[][]) => board.map((row) => row.map((cell) => ({ ...cell })));
 
 /** 搬雷之后必须整盘重算邻雷数，否则数字全是错的。 */
@@ -95,7 +109,7 @@ const dropCopy = (name: string) => {
 };
 
 export const MinesweeperApp: React.FC = () => {
-  const { addCredits, addMerit, addInventoryItem, spendItem, showAlert, state, windows } = useGame();
+  const { addCredits, addMerit, addInventoryItem, spendItem, showAlert, state, windows, updateWindowSize } = useGame();
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
   const [grid, setGrid] = useState<Cell[][]>([]);
   const [gameState, setGameState] = useState<'playing' | 'won' | 'lost'>('playing');
@@ -105,6 +119,26 @@ export const MinesweeperApp: React.FC = () => {
   // 计时从首次翻开格子起算，可手动暂停；应用窗口最小化时视同暂停（后台 setInterval 不可信）
   const [isStarted, setIsStarted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+
+  // 难度切换与窗口自适应 (根据不同难度自适应窗口尺寸，杜绝拥挤与滚动条)
+  const switchDifficulty = useCallback((d: Difficulty) => {
+    setDifficulty(d);
+    const target = DIFFICULTY_WINDOW_SIZES[d];
+    const curWin = windows.find((w) => w.id === 'minesweeper');
+    if (curWin && !curWin.isMaximized) {
+      updateWindowSize('minesweeper', target.width, target.height);
+    }
+  }, [windows, updateWindowSize]);
+
+  // 打开应用时，如果当前窗口小于该难度推荐尺寸，自动调整至舒适推荐尺寸
+  useEffect(() => {
+    const curWin = windows.find((w) => w.id === 'minesweeper');
+    const target = DIFFICULTY_WINDOW_SIZES[difficulty];
+    if (curWin && !curWin.isMaximized && (curWin.width < target.width || curWin.height < target.height)) {
+      updateWindowSize('minesweeper', target.width, target.height);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cfg = CONFIGS[difficulty];
   const dropChance = LEGENDARY_DROP_CHANCE[difficulty];
@@ -374,7 +408,7 @@ export const MinesweeperApp: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-950/95 text-slate-200 font-mono select-none overflow-y-auto p-3">
+    <div className="flex flex-col h-full bg-slate-950/95 text-slate-200 font-mono select-none overflow-x-hidden overflow-y-auto px-1 py-0.5 justify-between">
       {/* Top Header & Synergy Status */}
       <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800 shrink-0">
         <div className="flex items-center gap-2">
@@ -410,12 +444,12 @@ export const MinesweeperApp: React.FC = () => {
       </div>
 
       {/* Control Bar: Difficulty & Game Status */}
-      <div className="flex flex-wrap items-center justify-between gap-2 py-2 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-1.5 py-1.5 shrink-0">
         <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-lg border border-slate-800 text-xs">
           {(['easy', 'medium', 'hard'] as Difficulty[]).map((d) => (
             <button
               key={d}
-              onClick={() => setDifficulty(d)}
+              onClick={() => switchDifficulty(d)}
               className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
                 difficulty === d
                   ? 'bg-cyan-500 text-slate-950 shadow-neon-cyan'
@@ -487,7 +521,7 @@ export const MinesweeperApp: React.FC = () => {
       </div>
 
       {/* Minesweeper Grid Canvas */}
-      <div className="flex-1 flex items-center justify-center p-2 min-h-[220px]">
+      <div className="flex-1 flex items-center justify-center p-1 min-h-0">
         <div
           className={`grid gap-1 p-2 rounded-xl bg-slate-900/80 border border-slate-800 shadow-inner max-w-full overflow-auto ${
             isHalted ? 'opacity-30 blur-[2px] pointer-events-none' : ''
@@ -503,7 +537,7 @@ export const MinesweeperApp: React.FC = () => {
                 onClick={() => handleClickCell(r, c)}
                 onDoubleClick={() => handleChord(r, c)}
                 onContextMenu={(e) => toggleFlag(r, c, e)}
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center font-bold text-xs transition-all select-none cursor-pointer border ${
+                className={`${CELL_SIZES[difficulty]} rounded flex items-center justify-center font-bold transition-all select-none cursor-pointer border ${
                   cell.isRevealed
                     ? cell.isMine
                       ? 'bg-red-600 border-red-400 text-white shadow-neon-pink animate-pulse'

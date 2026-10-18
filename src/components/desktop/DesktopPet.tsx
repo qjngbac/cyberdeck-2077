@@ -1,21 +1,55 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useGame } from '../../context/GameContext';
 import { SoundFX } from '../../audio/SoundFX';
+import { formatCredits } from '../../utils/gameLogic';
+
+const PET_POS_KEY = 'cyberdeck_desktop_pet_pos';
+
+function loadSavedPetPos(): { x: number; y: number } {
+  try {
+    const raw = localStorage.getItem(PET_POS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
+        const minX = 10;
+        const maxX = Math.max(minX, window.innerWidth - 70);
+        const minY = 35;
+        const maxY = Math.max(minY, window.innerHeight - 80);
+        return {
+          x: Math.min(maxX, Math.max(minX, parsed.x)),
+          y: Math.min(maxY, Math.max(minY, parsed.y)),
+        };
+      }
+    }
+  } catch {}
+  return {
+    x: Math.max(40, Math.min(window.innerWidth - 100, window.innerWidth * 0.4)),
+    y: Math.max(40, window.innerHeight - 110),
+  };
+}
 
 export const DesktopPet: React.FC = () => {
   const { state, petPet, addCredits } = useGame();
   const pet = state.pet;
 
-  const [x, setX] = useState<number>(window.innerWidth * 0.4);
+  const [pos, setPos] = useState<{ x: number; y: number }>(() => loadSavedPetPos());
   const [direction, setDirection] = useState<'left' | 'right'>('right');
-  const [action, setAction] = useState<'walk' | 'idle' | 'sit' | 'sleep' | 'dig' | 'happy'>('walk');
+  const [action, setAction] = useState<'walk' | 'idle' | 'sit' | 'sleep' | 'dig' | 'happy' | 'held'>('walk');
   const [speech, setSpeech] = useState<string>('汪！本汪在巡逻桌面！');
   const [showSpeech, setShowSpeech] = useState<boolean>(true);
   const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   const speechTimerRef = useRef<number | null>(null);
   const lastMeritRef = useRef<number>(state.merit);
   const lastDigTimeRef = useRef<number>(0);
+  const dragStartRef = useRef<{ startX: number; startY: number; pointerX: number; pointerY: number; moved: boolean }>({
+    startX: 0,
+    startY: 0,
+    pointerX: 0,
+    pointerY: 0,
+    moved: false,
+  });
 
   const triggerSpeech = useCallback((text: string, durationMs: number = 3500) => {
     setSpeech(text);
@@ -36,9 +70,27 @@ export const DesktopPet: React.FC = () => {
     }
   }, [state.merit, pet.roamOnDesktop, triggerSpeech]);
 
-  // Main Walking & Behavior AI Loop
+  // Window resize protection: clamp pet coordinates to stay in viewport
   useEffect(() => {
-    if (pet.roamOnDesktop === false) return;
+    const handleResize = () => {
+      setPos((prev) => {
+        const minX = 10;
+        const maxX = Math.max(minX, window.innerWidth - 70);
+        const minY = 35;
+        const maxY = Math.max(minY, window.innerHeight - 80);
+        return {
+          x: Math.min(maxX, Math.max(minX, prev.x)),
+          y: Math.min(maxY, Math.max(minY, prev.y)),
+        };
+      });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Main Walking & Behavior AI Loop (paused while dragging)
+  useEffect(() => {
+    if (pet.roamOnDesktop === false || isDragging || action === 'held') return;
 
     const walkTimer = setInterval(() => {
       // If sleeping or sitting, occasional chance to stand up
@@ -74,7 +126,7 @@ export const DesktopPet: React.FC = () => {
           const coin = 30 + Math.floor(Math.random() * 30);
           addCredits(coin);
           SoundFX.playCash();
-          triggerSpeech(`🎉 哇！刨到了一枚赛博冷钱包，+$${coin} 赛博币！`);
+          triggerSpeech(`🎉 哇！刨到了一枚赛博冷钱包，+${formatCredits(coin)}！`);
         } else {
           setAction('sit');
         }
@@ -85,29 +137,101 @@ export const DesktopPet: React.FC = () => {
       } else {
         // Walk forward
         setAction('walk');
-        setX((prev) => {
+        setPos((prev) => {
           const step = direction === 'right' ? 8 : -8;
-          const next = prev + step;
-          const minX = 40;
-          const maxX = window.innerWidth - 100;
-          if (next >= maxX) {
+          const nextX = prev.x + step;
+          const minX = 20;
+          const maxX = Math.max(minX, window.innerWidth - 80);
+          if (nextX >= maxX) {
             setDirection('left');
-            return maxX;
+            return { ...prev, x: maxX };
           }
-          if (next <= minX) {
+          if (nextX <= minX) {
             setDirection('right');
-            return minX;
+            return { ...prev, x: minX };
           }
-          return next;
+          return { ...prev, x: nextX };
         });
       }
     }, 1200);
 
     return () => clearInterval(walkTimer);
-  }, [action, direction, addCredits, pet.roamOnDesktop, triggerSpeech]);
+  }, [action, direction, addCredits, pet.roamOnDesktop, triggerSpeech, isDragging]);
 
-  // Click on pet: petting!
+  // Pointer Down: Start Dragging handler
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0) return; // Only primary button
+    e.preventDefault();
+
+    dragStartRef.current = {
+      startX: pos.x,
+      startY: pos.y,
+      pointerX: e.clientX,
+      pointerY: e.clientY,
+      moved: false,
+    };
+
+    const handlePointerMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - dragStartRef.current.pointerX;
+      const dy = ev.clientY - dragStartRef.current.pointerY;
+
+      if (!dragStartRef.current.moved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        dragStartRef.current.moved = true;
+        setIsDragging(true);
+        setAction('held');
+        const dragPhrases = [
+          '起飞喽！(o゜▽゜)o',
+          '主银你要带本汪去哪呀~',
+          '哇呀呀~ 巡逻新领地！',
+          '抓稳啦！不要把本汪摔着啦~',
+        ];
+        triggerSpeech(dragPhrases[Math.floor(Math.random() * dragPhrases.length)], 3000);
+      }
+
+      if (dragStartRef.current.moved) {
+        const minX = 10;
+        const maxX = Math.max(minX, window.innerWidth - 70);
+        const minY = 35;
+        const maxY = Math.max(minY, window.innerHeight - 80);
+        const nextX = Math.min(maxX, Math.max(minX, dragStartRef.current.startX + dx));
+        const nextY = Math.min(maxY, Math.max(minY, dragStartRef.current.startY + dy));
+        setPos({ x: nextX, y: nextY });
+      }
+    };
+
+    const handlePointerUp = () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+
+      if (dragStartRef.current.moved) {
+        setIsDragging(false);
+        setAction('sit');
+        SoundFX.playKeyClick();
+        const landPhrases = [
+          '顺利着陆！本汪在这里值守！',
+          '换了个好视角，代码都写得更快了！',
+          '安全着陆~ 坐下来看主银敲代码~',
+        ];
+        triggerSpeech(landPhrases[Math.floor(Math.random() * landPhrases.length)], 3000);
+        setPos((latestPos) => {
+          try {
+            localStorage.setItem(PET_POS_KEY, JSON.stringify(latestPos));
+          } catch {}
+          return latestPos;
+        });
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+  };
+
+  // Click on pet: petting! (Only if not dragged)
   const handlePetClick = (e: React.MouseEvent) => {
+    if (dragStartRef.current.moved) {
+      dragStartRef.current.moved = false;
+      return;
+    }
     e.stopPropagation();
     SoundFX.playLevelUp();
     petPet();
@@ -130,7 +254,7 @@ export const DesktopPet: React.FC = () => {
     triggerSpeech(quotes[Math.floor(Math.random() * quotes.length)]);
   };
 
-  // If roaming is disabled in state, do not render JSX (all hooks called in consistent order)
+  // If roaming is disabled in state, do not render JSX
   if (pet.roamOnDesktop === false) {
     return null;
   }
@@ -148,16 +272,20 @@ export const DesktopPet: React.FC = () => {
   return (
     <div
       style={{
-        left: `${x}px`,
-        bottom: '48px',
-        transition: action === 'walk' ? 'left 1.2s linear' : 'none',
+        left: `${pos.x}px`,
+        top: `${pos.y}px`,
+        transition: action === 'walk' && !isDragging ? 'left 1.2s linear' : 'none',
+        touchAction: 'none',
       }}
-      className="fixed z-[9990] pointer-events-auto select-none flex flex-col items-center group cursor-pointer"
+      className={`fixed z-[9990] pointer-events-auto select-none flex flex-col items-center group cursor-grab active:cursor-grabbing ${
+        isDragging ? 'cursor-grabbing' : ''
+      }`}
+      onPointerDown={handlePointerDown}
       onClick={handlePetClick}
     >
       {/* Speech bubble */}
       {showSpeech && (
-        <div className="pointer-events-none absolute bottom-16 -left-12 w-48 p-2 rounded-xl bg-slate-900/95 border border-cyan-500/60 shadow-lg shadow-cyan-950/80 text-[11px] font-mono text-cyan-200 text-center animate-in zoom-in-95 duration-150 backdrop-blur-md">
+        <div className="pointer-events-none absolute -top-14 left-1/2 -translate-x-1/2 w-48 p-2 rounded-xl bg-slate-900/95 border border-cyan-500/60 shadow-lg shadow-cyan-950/80 text-[11px] font-mono text-cyan-200 text-center animate-in zoom-in-95 duration-150 backdrop-blur-md">
           {speech}
           {/* Arrow */}
           <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-900 border-r border-b border-cyan-500/60 rotate-45" />
@@ -179,8 +307,10 @@ export const DesktopPet: React.FC = () => {
         style={{
           transform: direction === 'left' ? 'scaleX(-1)' : 'scaleX(1)',
         }}
-        className={`text-4xl transition-transform duration-200 ${
-          action === 'happy'
+        className={`text-4xl transition-all duration-200 ${
+          isDragging
+            ? 'scale-125 -rotate-12 filter drop-shadow-[0_10px_20px_rgba(6,182,212,0.6)] animate-pulse'
+            : action === 'happy'
             ? 'animate-bounce'
             : action === 'sleep'
             ? 'opacity-80 scale-90'
@@ -193,7 +323,11 @@ export const DesktopPet: React.FC = () => {
       </div>
 
       {/* Name tag on hover */}
-      <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 px-1.5 py-0.2 rounded-full bg-slate-900/80 border border-slate-700 text-[9px] text-slate-300 font-mono flex items-center gap-1">
+      <div
+        className={`mt-0.5 px-1.5 py-0.2 rounded-full bg-slate-900/80 border border-slate-700 text-[9px] text-slate-300 font-mono flex items-center gap-1 transition-opacity ${
+          isDragging ? 'opacity-0' : 'opacity-0 group-hover:opacity-100'
+        }`}
+      >
         <span>{pet.name}</span>
         <span className="text-yellow-400">Lv.{pet.level}</span>
       </div>
